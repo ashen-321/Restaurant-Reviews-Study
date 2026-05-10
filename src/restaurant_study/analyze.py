@@ -12,18 +12,20 @@ from scipy import stats
 from .regions import REGIONS
 
 
-RATING_CATEGORIES = ["<3.5", "3.5", "4.0", "4.5", "5.0"]
+RATING_CATEGORIES = ["<=3.0", "3.1-3.5", "3.6-4.0", "4.1-4.5", "4.6-5.0"]
 SIGNIFICANCE_LEVEL = 0.10
 
 
 def categorize(rating: float) -> str:
-    """Round to nearest 0.5; anything below 3.5 collapses to '<3.5'."""
-    rounded = round(rating * 2) / 2
-    if rounded < 3.5:
-        return "<3.5"
-    if rounded > 5.0:
-        rounded = 5.0
-    return f"{rounded:.1f}"
+    if rating <= 3.0:
+        return "<=3.0"
+    if rating <= 3.5:
+        return "3.1-3.5"
+    if rating <= 4.0:
+        return "3.6-4.0"
+    if rating <= 4.5:
+        return "4.1-4.5"
+    return "4.6-5.0"
 
 
 def build_contingency(sample_df: pd.DataFrame) -> pd.DataFrame:
@@ -119,9 +121,21 @@ def _plot_segmented_bar(contingency: pd.DataFrame, out_path: Path) -> None:
     plt.close(fig)
 
 
-def analyze(sample_path: Path, out_dir: Path) -> dict:
+def analyze(sample_path: Path, out_dir: Path, test_state: str | None = None) -> dict:
     sample_df = pd.read_csv(sample_path)
     contingency = build_contingency(sample_df)
+    if test_state:
+        # Only one region's worth of data — chi-square for homogeneity needs ≥2
+        # populations, so show the distribution instead.
+        out_dir.mkdir(parents=True, exist_ok=True)
+        contingency_path = out_dir / "contingency.csv"
+        contingency.to_csv(contingency_path)
+        print(f"\nTEST-RUN ({test_state}) — single-region distribution:\n")
+        print(contingency.to_string())
+        print(f"\nWrote: {contingency_path}")
+        print("Chi-square test skipped (needs >= 2 regions).")
+        return {"test_run": True, "contingency": contingency}
+
     result = run_chi_square(contingency)
     paths = write_results(contingency, result, out_dir)
     print("\n" + (out_dir / "chi_square.txt").read_text())

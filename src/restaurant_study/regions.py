@@ -114,3 +114,7 @@ def grid_points_for_region(region: str) -> list[GridPoint]:
 
 def all_grid_points() -> list[GridPoint]:
     return [p for region in REGIONS for p in grid_points_for_region(region)]
+
+
+def grid_points_for_states(states: list[str]) -> list[GridPoint]:
+    return [p for s in states for p in grid_points_for_state(s)]

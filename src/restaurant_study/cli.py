@@ -8,6 +8,7 @@ from pathlib import Path
 from .analyze import analyze
 from .collect import collect_all, estimate_calls
 from .places_client import PlacesClient, load_api_key
+from .regions import STATE_TO_REGION
 from .sample import sample_all
 
 
@@ -36,9 +37,11 @@ def _build_client(args: argparse.Namespace) -> PlacesClient:
 
 
 def cmd_collect(args: argparse.Namespace) -> None:
-    total = estimate_calls()
+    test_state = _resolve_test_state(args)
+    total = estimate_calls(test_state=test_state)
     est_cost = total * COST_PER_1K_REQUESTS_USD / 1000.0
-    print(f"A fresh collect would issue up to {total} Nearby Search requests.")
+    scope = f"{test_state} only" if test_state else "all 5 regions"
+    print(f"A fresh collect ({scope}) would issue up to {total} Nearby Search requests.")
     print(
         f"Estimated raw cost: ${est_cost:,.2f}. "
         f"With the ${FREE_CREDIT_USD:.0f}/month Google Maps Platform credit, "
@@ -49,15 +52,15 @@ def cmd_collect(args: argparse.Namespace) -> None:
         print("--dry-run set; no API calls will be made.")
         return
     client = _build_client(args)
-    collect_all(client, RESTAURANTS_CSV)
+    collect_all(client, RESTAURANTS_CSV, test_state=test_state)
 
 
 def cmd_sample(args: argparse.Namespace) -> None:
-    sample_all(RESTAURANTS_CSV, SAMPLE_CSV)
+    sample_all(RESTAURANTS_CSV, SAMPLE_CSV, test_state=_resolve_test_state(args))
 
 
 def cmd_analyze(args: argparse.Namespace) -> None:
-    analyze(SAMPLE_CSV, RESULTS_DIR)
+    analyze(SAMPLE_CSV, RESULTS_DIR, test_state=_resolve_test_state(args))
 
 
 def cmd_all(args: argparse.Namespace) -> None:
@@ -68,6 +71,18 @@ def cmd_all(args: argparse.Namespace) -> None:
     cmd_analyze(args)
 
 
+def _resolve_test_state(args: argparse.Namespace) -> str | None:
+    value = getattr(args, "test_run", None)
+    if value is None:
+        return None
+    state = value.upper()
+    if state not in STATE_TO_REGION:
+        raise SystemExit(
+            f"--test-run expects a 2-letter US state code (e.g. CA), got {value!r}."
+        )
+    return state
+
+
 def _add_common_flags(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--dry-run", action="store_true",
@@ -76,6 +91,11 @@ def _add_common_flags(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--max-calls", type=int, default=None,
         help="Abort if this many uncached API calls are issued.",
+    )
+    parser.add_argument(
+        "--test-run", nargs="?", const="CA", default=None, metavar="STATE",
+        help="Limit to a single state (default CA) to avoid burning quota. "
+             "Skips the chi-square test since homogeneity needs >= 2 regions.",
     )
 
 

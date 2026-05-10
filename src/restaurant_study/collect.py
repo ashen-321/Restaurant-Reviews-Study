@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -13,6 +14,7 @@ from .regions import (
     STATE_TO_REGION,
     GridPoint,
     all_grid_points,
+    grid_points_for_state,
 )
 
 
@@ -33,19 +35,21 @@ class Restaurant:
     region: str
 
 
+# Google formats US addresses as "..., City, ST ZIP, USA" (or ST ZIP-NNNN).
+# Anchor on that tail to avoid false matches on street names like "La Mesa"
+# ("LA") or "Oak Ct" ("CT").
+_US_STATE_ZIP_RE = re.compile(r",\s*([A-Z]{2})\s+\d{5}(?:-\d{4})?,\s*USA\s*$")
+
+
 def _extract_state_from_address(address: str) -> str | None:
-    """Best-effort: pull the USPS state abbreviation out of a formatted address."""
-    parts = [p.strip() for p in address.split(",")]
-    for part in parts:
-        tokens = part.split()
-        for token in tokens:
-            stripped = token.strip().upper()
-            if len(stripped) == 2 and stripped in STATE_TO_REGION:
-                return stripped
-    return None
+    match = _US_STATE_ZIP_RE.search(address)
+    if not match:
+        return None
+    state = match.group(1)
+    return state if state in STATE_TO_REGION else None
 
 
-def _place_to_restaurant(place: dict, fallback_state: str) -> Restaurant | None:
+def _place_to_restaurant(place: dict) -> Restaurant | None:
     place_id = place.get("id")
     rating = place.get("rating")
     rating_count = place.get("userRatingCount")
@@ -58,7 +62,10 @@ def _place_to_restaurant(place: dict, fallback_state: str) -> Restaurant | None:
         return None
 
     address = place.get("formattedAddress", "")
-    state = _extract_state_from_address(address) or fallback_state
+    state = _extract_state_from_address(address)
+    if state is None:
+        # Not a US address (e.g. Mexico across the CA border), or malformed.
+        return None
     region = STATE_TO_REGION.get(state)
     if region is None:
         return None
@@ -82,14 +89,20 @@ def collect_all(
     client: PlacesClient,
     output_path: Path,
     progress_every: int = 50,
+    test_state: str | None = None,
 ) -> dict[str, int]:
     """Sweep every grid point in every region, dedupe, filter, write CSV.
 
-    Returns a per-region count of restaurants that passed filtering.
+    If `test_state` is given, sweep only that state's grid (for quota-saving
+    test runs). Returns a per-region count of restaurants that passed filtering.
     """
-    grid = all_grid_points()
+    if test_state:
+        grid = grid_points_for_state(test_state)
+        print(f"TEST-RUN: sweeping {len(grid)} grid points in {test_state} only...")
+    else:
+        grid = all_grid_points()
+        print(f"Sweeping {len(grid)} grid points across {len(REGIONS)} regions...")
     total_points = len(grid)
-    print(f"Sweeping {total_points} grid points across {len(REGIONS)} regions...")
 
     seen: dict[str, Restaurant] = {}
     for i, point in enumerate(grid, start=1):
@@ -97,7 +110,7 @@ def collect_all(
             lat=point.lat, lng=point.lng, radius_m=NEARBY_RADIUS_METERS,
         )
         for place in response.get("places", []) or []:
-            restaurant = _place_to_restaurant(place, fallback_state=point.state)
+            restaurant = _place_to_restaurant(place)
             if restaurant and restaurant.place_id not in seen:
                 seen[restaurant.place_id] = restaurant
         if i % progress_every == 0 or i == total_points:
@@ -129,8 +142,10 @@ def collect_all(
     return per_region
 
 
-def estimate_calls() -> int:
+def estimate_calls(test_state: str | None = None) -> int:
     """How many API calls a fresh (uncached) collect would make."""
+    if test_state:
+        return len(grid_points_for_state(test_state))
     return len(all_grid_points())
 
 
