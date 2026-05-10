@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "restaurant-study"
+version = "0.1.0"
+description = "AP Statistics project: chi-square test for homogeneity of Chinese restaurant ratings across U.S. regions."
+requires-python = ">=3.10"
+dependencies = [
+    "requests>=2.31",
+    "python-dotenv>=1.0",
+    "pandas>=2.0",
+    "scipy>=1.11",
+    "matplotlib>=3.7",
+]
+
+[project.scripts]
+restaurant-study = "restaurant_study.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
