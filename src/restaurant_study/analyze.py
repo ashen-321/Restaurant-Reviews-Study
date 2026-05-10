@@ -12,15 +12,13 @@ from scipy import stats
 from .regions import REGIONS
 
 
-RATING_CATEGORIES = ["<=3.0", "3.1-3.5", "3.6-4.0", "4.1-4.5", "4.6-5.0"]
+RATING_CATEGORIES = ["<=3.5", "3.6-4.0", "4.1-4.5", "4.6-5.0"]
 SIGNIFICANCE_LEVEL = 0.10
 
 
 def categorize(rating: float) -> str:
-    if rating <= 3.0:
-        return "<=3.0"
     if rating <= 3.5:
-        return "3.1-3.5"
+        return "<=3.5"
     if rating <= 4.0:
         return "3.6-4.0"
     if rating <= 4.5:

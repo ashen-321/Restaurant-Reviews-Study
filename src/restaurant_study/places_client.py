@@ -107,21 +107,29 @@ class PlacesClient:
         }
 
         backoff = 1.0
-        for attempt in range(5):
-            response = requests.post(url, headers=headers, json=body, timeout=30)
+        last_error = "unknown error"
+        for attempt in range(6):
+            try:
+                response = requests.post(url, headers=headers, json=body, timeout=60)
+            except requests.exceptions.RequestException as exc:
+                last_error = f"network error: {exc}"
+                time.sleep(backoff)
+                backoff = min(backoff * 2, 30.0)
+                continue
             if response.status_code == 200:
                 self.stats.requests_made += 1
                 data = response.json()
                 cache_path.write_text(json.dumps(data, indent=2))
                 return data
             if response.status_code in (429, 500, 502, 503, 504):
+                last_error = f"HTTP {response.status_code}: {response.text[:200]}"
                 time.sleep(backoff)
                 backoff = min(backoff * 2, 30.0)
                 continue
             raise RuntimeError(
                 f"Places API error {response.status_code}: {response.text[:400]}"
             )
-        raise RuntimeError(f"Places API failed after retries: {response.text[:400]}")
+        raise RuntimeError(f"Places API failed after retries ({last_error})")
 
 
 def load_api_key() -> str | None:

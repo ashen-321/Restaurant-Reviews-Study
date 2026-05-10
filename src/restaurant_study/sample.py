@@ -10,16 +10,34 @@ import pandas as pd
 from .regions import REGIONS, STATE_TO_REGION
 
 
-SAMPLE_SIZE = 50
+SAMPLE_SIZE = 75
 RANDOM_SEED = 42
+
+
+def _load_exclusions(path: Path) -> set[str]:
+    if not path.exists():
+        return set()
+    ids: set[str] = set()
+    for raw in path.read_text().splitlines():
+        line = raw.split("#", 1)[0].strip()
+        if line:
+            ids.add(line)
+    return ids
 
 
 def sample_all(
     input_path: Path,
     output_path: Path,
     test_state: str | None = None,
+    exclusions_path: Path | None = None,
 ) -> pd.DataFrame:
     df = pd.read_csv(input_path)
+    if exclusions_path is not None:
+        excluded = _load_exclusions(exclusions_path)
+        if excluded:
+            before = len(df)
+            df = df[~df["place_id"].isin(excluded)]
+            print(f"Excluded {before - len(df)} restaurants via {exclusions_path.name}")
     rng = random.Random(RANDOM_SEED)
 
     if test_state:

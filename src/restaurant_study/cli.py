@@ -24,6 +24,7 @@ CACHE_DIR = DATA_DIR / "cache"
 RESULTS_DIR = DATA_DIR / "results"
 RESTAURANTS_CSV = RESULTS_DIR / "restaurants.csv"
 SAMPLE_CSV = RESULTS_DIR / "sample.csv"
+EXCLUSIONS_PATH = DATA_DIR / "exclusions.txt"
 
 
 def _build_client(args: argparse.Namespace) -> PlacesClient:
@@ -56,7 +57,12 @@ def cmd_collect(args: argparse.Namespace) -> None:
 
 
 def cmd_sample(args: argparse.Namespace) -> None:
-    sample_all(RESTAURANTS_CSV, SAMPLE_CSV, test_state=_resolve_test_state(args))
+    sample_all(
+        RESTAURANTS_CSV,
+        SAMPLE_CSV,
+        test_state=_resolve_test_state(args),
+        exclusions_path=EXCLUSIONS_PATH,
+    )
 
 
 def cmd_analyze(args: argparse.Namespace) -> None:

@@ -1,0 +1,10 @@
+# Place IDs to exclude from sampling.
+# One Google place_id per line. Text after `#` is a comment.
+# The outline calls for manually inspecting the sample and re-sampling any
+# restaurants that aren't strictly Chinese; listing them here causes `sample`
+# to skip them on the next run (the seed is fixed, so re-runs are reproducible).
+#
+# Example:
+# ChIJxxxxxxxxxxxxxxxxxxxxxxxxx  # Obviously pan-Asian, not Chinese-only
+
+ChIJ80D8ZAArw4ARpP0Jy_vOr-Q  # Sushi in the restaurant name
