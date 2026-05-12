@@ -40,6 +40,14 @@ def sample_all(
             print(f"Excluded {before - len(df)} restaurants via {exclusions_path.name}")
     rng = random.Random(RANDOM_SEED)
 
+    previous_ids: set[str] = set()
+    if output_path.exists():
+        try:
+            prev = pd.read_csv(output_path, usecols=["place_id"])
+            previous_ids = set(prev["place_id"].astype(str))
+        except (ValueError, KeyError):
+            pass
+
     if test_state:
         target_regions = [STATE_TO_REGION[test_state]]
     else:
@@ -62,10 +70,19 @@ def sample_all(
                 f"or relax filters."
             )
         indices = rng.sample(range(n), take)
-        samples.append(region_df.iloc[indices].assign(sample_index=indices))
+        chosen = region_df.iloc[indices].assign(sample_index=indices)
+        samples.append(chosen)
         print(f"  {region:>8}: sampled {take} of {n}")
 
     result = pd.concat(samples, ignore_index=True)
+    if previous_ids:
+        result["newly_added"] = ~result["place_id"].isin(previous_ids)
+        added = int(result["newly_added"].sum())
+        print(f"New restaurants vs. previous sample: {added}")
+    else:
+        result["newly_added"] = True
+        print("No previous sample found; marking all rows as newly_added=True.")
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
     result.to_csv(output_path, index=False)
     print(f"Wrote sample to {output_path}")
