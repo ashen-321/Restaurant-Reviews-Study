@@ -14,15 +14,31 @@ SAMPLE_SIZE = 75
 RANDOM_SEED = 42
 
 
-def _load_exclusions(path: Path) -> set[str]:
+def _normalize_name(name: str) -> str:
+    """Lowercase and collapse all internal whitespace for exact-match comparison."""
+    return " ".join(str(name).casefold().split())
+
+
+def _load_exclusions(path: Path) -> tuple[set[str], set[str]]:
+    """Parse exclusions.txt into (place_ids, normalized_names).
+
+    Lines starting with 'ChIJ' and containing no spaces are treated as Google
+    place_ids; anything else is a restaurant name (whitespace and case
+    normalized, exact-match only).
+    """
     if not path.exists():
-        return set()
+        return set(), set()
     ids: set[str] = set()
+    names: set[str] = set()
     for raw in path.read_text().splitlines():
         line = raw.split("#", 1)[0].strip()
-        if line:
+        if not line:
+            continue
+        if line.startswith("ChIJ") and " " not in line:
             ids.add(line)
-    return ids
+        else:
+            names.add(_normalize_name(line))
+    return ids, names
 
 
 def sample_all(
@@ -33,10 +49,16 @@ def sample_all(
 ) -> pd.DataFrame:
     df = pd.read_csv(input_path)
     if exclusions_path is not None:
-        excluded = _load_exclusions(exclusions_path)
-        if excluded:
+        excluded_ids, excluded_names = _load_exclusions(exclusions_path)
+        if excluded_ids or excluded_names:
             before = len(df)
-            df = df[~df["place_id"].isin(excluded)]
+            mask = pd.Series(True, index=df.index)
+            if excluded_ids:
+                mask &= ~df["place_id"].isin(excluded_ids)
+            if excluded_names:
+                normalized = df["name"].map(_normalize_name)
+                mask &= ~normalized.isin(excluded_names)
+            df = df[mask]
             print(f"Excluded {before - len(df)} restaurants via {exclusions_path.name}")
     rng = random.Random(RANDOM_SEED)
 
