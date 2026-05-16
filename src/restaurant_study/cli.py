@@ -66,7 +66,12 @@ def cmd_sample(args: argparse.Namespace) -> None:
 
 
 def cmd_analyze(args: argparse.Namespace) -> None:
-    analyze(SAMPLE_CSV, RESULTS_DIR, test_state=_resolve_test_state(args))
+    analyze(
+        SAMPLE_CSV,
+        RESULTS_DIR,
+        test_state=_resolve_test_state(args),
+        exclusions_path=EXCLUSIONS_PATH,
+    )
 
 
 def cmd_all(args: argparse.Namespace) -> None:

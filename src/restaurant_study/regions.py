@@ -7,12 +7,13 @@ from dataclasses import dataclass
 
 
 REGIONS: dict[str, list[str]] = {
-    "Pacific":  ["AK", "HI", "CA", "OR", "WA"],
-    "Rockies":  ["ID", "MT", "WY", "UT", "CO", "AZ", "NM", "NV"],
-    "Midwest":  ["ND", "SD", "NE", "KS", "MN", "IA", "MO", "MI", "WI", "IL", "IN", "OH"],
-    "South":    ["TX", "OK", "AR", "LA", "MS", "TN", "KY", "AL", "GA", "FL"],
-    "Atlantic": ["VA", "WV", "NC", "SC", "ME", "NH", "VT", "NY", "MA", "RI",
-                 "CT", "PA", "DE", "MD", "NJ", "DC"],
+    "Pacific":              ["AK", "HI", "CA", "OR", "WA"],
+    "Rockies & Great Plains": ["ID", "MT", "WY", "UT", "CO", "AZ", "NM", "NV",
+                               "ND", "SD", "NE", "KS"],
+    "Midwest":              ["MN", "IA", "MO", "MI", "WI", "IL", "IN", "OH"],
+    "South":                ["TX", "OK", "AR", "LA", "MS", "TN", "KY", "AL", "GA", "FL"],
+    "Atlantic":             ["VA", "WV", "NC", "SC", "ME", "NH", "VT", "NY", "MA", "RI",
+                             "CT", "PA", "DE", "MD", "NJ", "DC"],
 }
 
 STATE_TO_REGION: dict[str, str] = {

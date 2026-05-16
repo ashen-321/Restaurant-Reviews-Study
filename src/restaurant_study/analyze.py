@@ -10,6 +10,7 @@ import pandas as pd
 from scipy import stats
 
 from .regions import REGIONS
+from .sample import _load_exclusions, _normalize_name
 
 
 RATING_CATEGORIES = ["<=3.5", "3.6-4.0", "4.1-4.5", "4.6-5.0"]
@@ -119,8 +120,37 @@ def _plot_segmented_bar(contingency: pd.DataFrame, out_path: Path) -> None:
     plt.close(fig)
 
 
-def analyze(sample_path: Path, out_dir: Path, test_state: str | None = None) -> dict:
+def _apply_exclusions(sample_df: pd.DataFrame, exclusions_path: Path) -> pd.DataFrame:
+    """Drop rows in sample_df that appear in exclusions.txt; print what was dropped."""
+    excluded_ids, excluded_names = _load_exclusions(exclusions_path)
+    if not excluded_ids and not excluded_names:
+        return sample_df
+
+    normalized = sample_df["name"].map(_normalize_name)
+    mask_id = sample_df["place_id"].isin(excluded_ids)
+    mask_name = normalized.isin(excluded_names)
+    drop_mask = mask_id | mask_name
+    if not drop_mask.any():
+        return sample_df
+
+    dropped = sample_df.loc[drop_mask, ["place_id", "name", "region"]]
+    print(f"\nDropping {len(dropped)} restaurant(s) from analysis "
+          f"per {exclusions_path.name}:")
+    for _, row in dropped.iterrows():
+        print(f"  [{row['region']:>8}]  {row['place_id']}  {row['name']}")
+    print()
+    return sample_df.loc[~drop_mask].reset_index(drop=True)
+
+
+def analyze(
+    sample_path: Path,
+    out_dir: Path,
+    test_state: str | None = None,
+    exclusions_path: Path | None = None,
+) -> dict:
     sample_df = pd.read_csv(sample_path)
+    if exclusions_path is not None:
+        sample_df = _apply_exclusions(sample_df, exclusions_path)
     contingency = build_contingency(sample_df)
     if test_state:
         # Only one region's worth of data — chi-square for homogeneity needs ≥2

@@ -137,7 +137,7 @@ def collect_all(
         per_region[r.region] += 1
     print("\nRestaurants passing filter per region:")
     for region, count in per_region.items():
-        print(f"  {region:>8}: {count}")
+        print(f"  {region:>22}: {count}")
     print(f"Wrote {len(seen)} restaurants to {output_path}")
     return per_region
 

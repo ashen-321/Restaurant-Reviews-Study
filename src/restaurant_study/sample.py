@@ -10,7 +10,7 @@ import pandas as pd
 from .regions import REGIONS, STATE_TO_REGION
 
 
-SAMPLE_SIZE = 75
+SAMPLE_SIZE = 100
 RANDOM_SEED = 42
 
 
@@ -94,7 +94,7 @@ def sample_all(
         indices = rng.sample(range(n), take)
         chosen = region_df.iloc[indices].assign(sample_index=indices)
         samples.append(chosen)
-        print(f"  {region:>8}: sampled {take} of {n}")
+        print(f"  {region:>22}: sampled {take} of {n}")
 
     result = pd.concat(samples, ignore_index=True)
     if previous_ids:
