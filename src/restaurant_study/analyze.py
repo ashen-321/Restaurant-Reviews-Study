@@ -140,7 +140,7 @@ def _plot_per_region(contingency: pd.DataFrame, out_path: Path) -> None:
         # Expected overlay: short horizontal segment centered on each bar.
         for i, exp in enumerate(expected_rel):
             ax.hlines(exp, i - 0.4, i + 0.4, colors="#d62728", linewidth=2.5,
-                      label="Expected (H_0)" if i == 0 else None)
+                      label="Expected" if i == 0 else None)
             label_y = max(exp, observed_rel[i]) + y_top * 0.025
             ax.text(i, label_y, f"{exp:.3f}", ha="center", va="bottom",
                     fontsize=9, color="#d62728", fontweight="bold")
@@ -158,7 +158,7 @@ def _plot_per_region(contingency: pd.DataFrame, out_path: Path) -> None:
                         f"{value:.3f}", ha="center", va="bottom", fontsize=9)
     axes[0].set_ylabel("Relative Frequency")
     handles, labels = axes[0].get_legend_handles_labels()
-    fig.suptitle("Star-Rating Distribution by Region — Observed vs. Expected (H0)")
+    fig.suptitle("Star-Rating Distribution by Region — Observed vs. Expected")
     plt.tight_layout(rect=(0, 0, 0.92, 1))
     fig.legend(handles, labels, loc="center right", bbox_to_anchor=(1.0, 0.5))
     plt.savefig(out_path, dpi=150, bbox_inches="tight")
