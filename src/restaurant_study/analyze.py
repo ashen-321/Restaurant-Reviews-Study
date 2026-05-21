@@ -120,6 +120,67 @@ def _plot_segmented_bar(contingency: pd.DataFrame, out_path: Path) -> None:
     plt.close(fig)
 
 
+def _plot_per_region(contingency: pd.DataFrame, out_path: Path) -> None:
+    """One bar chart per region: observed relative freq + expected as overlaid lines."""
+    counts = contingency.drop(columns=["Total"])
+    row_totals = counts.sum(axis=1)
+    col_totals = counts.sum(axis=0)
+    grand_total = col_totals.sum()
+    # Under H0, expected relative freq is identical across regions: col_total / grand_total.
+    expected_rel = (col_totals / grand_total).to_numpy()
+
+    regions = list(counts.index)
+    fig, axes = plt.subplots(1, len(regions), figsize=(4 * len(regions), 5),
+                             sharey=True)
+    x = np.arange(len(RATING_CATEGORIES))
+    for ax, region in zip(axes, regions):
+        observed_rel = counts.loc[region].to_numpy() / row_totals.loc[region]
+        bars = ax.bar(x, observed_rel, color="#1f77b4", label="Observed")
+        y_top = max(observed_rel.max(), expected_rel.max()) * 1.15
+        # Expected overlay: short horizontal segment centered on each bar.
+        for i, exp in enumerate(expected_rel):
+            ax.hlines(exp, i - 0.4, i + 0.4, colors="#d62728", linewidth=2.5,
+                      label="Expected (H_0)" if i == 0 else None)
+            label_y = max(exp, observed_rel[i]) + y_top * 0.025
+            ax.text(i, label_y, f"{exp:.3f}", ha="center", va="bottom",
+                    fontsize=9, color="#d62728", fontweight="bold")
+        ax.set_xticks(x)
+        ax.set_xticklabels(RATING_CATEGORIES, rotation=20)
+        ax.set_title(region)
+        ax.set_ylim(0, y_top)
+        for bar, value in zip(bars, observed_rel):
+            if value > 0.03:
+                ax.text(bar.get_x() + bar.get_width() / 2, y_top * 0.01,
+                        f"{value:.3f}", ha="center", va="bottom", fontsize=9,
+                        color="white", fontweight="bold")
+            else:
+                ax.text(bar.get_x() + bar.get_width() / 2, value + y_top * 0.01,
+                        f"{value:.3f}", ha="center", va="bottom", fontsize=9)
+    axes[0].set_ylabel("Relative Frequency")
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.suptitle("Star-Rating Distribution by Region — Observed vs. Expected (H0)")
+    plt.tight_layout(rect=(0, 0, 0.92, 1))
+    fig.legend(handles, labels, loc="center right", bbox_to_anchor=(1.0, 0.5))
+    plt.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+
+
+def visualize(
+    sample_path: Path,
+    out_dir: Path,
+    exclusions_path: Path | None = None,
+) -> Path:
+    sample_df = pd.read_csv(sample_path)
+    if exclusions_path is not None:
+        sample_df = _apply_exclusions(sample_df, exclusions_path)
+    contingency = build_contingency(sample_df)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / "per_region_distribution.png"
+    _plot_per_region(contingency, out_path)
+    print(f"Wrote: {out_path}")
+    return out_path
+
+
 def _apply_exclusions(sample_df: pd.DataFrame, exclusions_path: Path) -> pd.DataFrame:
     """Drop rows in sample_df that appear in exclusions.txt; print what was dropped."""
     excluded_ids, excluded_names = _load_exclusions(exclusions_path)

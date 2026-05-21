@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from .analyze import analyze
+from .analyze import analyze, visualize
 from .collect import collect_all, estimate_calls
 from .places_client import PlacesClient, load_api_key
 from .regions import STATE_TO_REGION
@@ -74,6 +74,10 @@ def cmd_analyze(args: argparse.Namespace) -> None:
     )
 
 
+def cmd_visualize(args: argparse.Namespace) -> None:
+    visualize(SAMPLE_CSV, RESULTS_DIR, exclusions_path=EXCLUSIONS_PATH)
+
+
 def cmd_all(args: argparse.Namespace) -> None:
     cmd_collect(args)
     if args.dry_run:
@@ -125,6 +129,11 @@ def main() -> None:
     p_analyze = subparsers.add_parser("analyze", help="Run chi-square + make chart.")
     _add_common_flags(p_analyze)
     p_analyze.set_defaults(func=cmd_analyze)
+
+    p_visualize = subparsers.add_parser(
+        "visualize", help="Per-region observed vs. expected bar charts.",
+    )
+    p_visualize.set_defaults(func=cmd_visualize)
 
     p_all = subparsers.add_parser("all", help="collect + sample + analyze.")
     _add_common_flags(p_all)
